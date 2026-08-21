@@ -1,0 +1,61 @@
+{
+  "name": "@mikhaben/pi-model-router",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Ordered model fallback for pi: a chain you define, advanced automatically when a model hits a provider limit or error, with SQLite failure history and a /model-router command.",
+  "author": "mikhaben",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mikhaben/pi-model-router.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mikhaben/pi-model-router/issues"
+  },
+  "homepage": "https://github.com/mikhaben/pi-model-router#readme",
+  "keywords": [
+    "pi-package",
+    "pi",
+    "pi-extension",
+    "model",
+    "router",
+    "fallback",
+    "failover",
+    "rate-limit"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "src",
+    "dist",
+    "README.md",
+    "LICENSE",
+    "pi-model-router.example.json"
+  ],
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": ">=0.83.0",
+    "@earendil-works/pi-tui": ">=0.83.0"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json",
+    "test": "vitest run",
+    "prepublishOnly": "npm run typecheck && npm run test && npm run build"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-coding-agent": "^0.83.0",
+    "@earendil-works/pi-tui": "^0.83.0",
+    "@types/node": "^24.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  },
+  "pi": {
+    "extensions": [
+      "./src/index.ts"
+    ]
+  }
+}
