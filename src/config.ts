@@ -8,10 +8,35 @@ export function configPath(agentDir: string): string {
   return join(agentDir, "extension-settings", CONFIG_FILENAME);
 }
 
+/** pi's thinking levels, in pi's own order. */
+const THINKING_LEVELS = new Set([
+  "off", "minimal", "low", "medium", "high", "xhigh", "max",
+]);
+
+/**
+ * Separates a model id from an optional thinking level. Doubled deliberately:
+ * a single colon already belongs to model ids such as `laguna-s-2.1:free`.
+ */
+const THINKING_SEPARATOR = "::";
+
+export type ThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
+
 export interface ChainEntry {
   provider: string;
   modelId: string;
+  /** Applied after switching to this entry; absent leaves the session level alone. */
+  thinking?: ThinkingLevel;
   raw: string;
+}
+
+/** Split `provider/model-id::level` into its parts. An unknown level is reported, not applied. */
+function splitThinking(entry: string): { model: string; thinking?: ThinkingLevel; badLevel?: string } {
+  const at = entry.lastIndexOf(THINKING_SEPARATOR);
+  if (at <= 0) return { model: entry };
+  const suffix = entry.slice(at + THINKING_SEPARATOR.length);
+  const model = entry.slice(0, at);
+  if (!THINKING_LEVELS.has(suffix)) return { model, badLevel: suffix };
+  return { model, thinking: suffix as ThinkingLevel };
 }
 
 export interface LoadedConfig {
@@ -49,15 +74,22 @@ export function parseConfig(jsonText: string): LoadedConfig {
       continue;
     }
 
-    const slash = entry.indexOf("/");
-    if (slash <= 0 || slash === entry.length - 1) {
+    const { model, thinking, badLevel } = splitThinking(entry);
+    if (badLevel !== undefined) {
+      warnings.push(
+        `invalid thinking level ${entryLabel(badLevel)} in ${entryLabel(entry)}: `
+        + `expected one of ${[...THINKING_LEVELS].join(", ")}`,
+      );
+    }
+    const slash = model.indexOf("/");
+    if (slash <= 0 || slash === model.length - 1) {
       warnings.push(`invalid chain entry ${entryLabel(entry)}: expected provider/model-id`);
       continue;
     }
 
-    const provider = entry.slice(0, slash);
-    const modelId = entry.slice(slash + 1);
-    chain.push({ provider, modelId, raw: entry });
+    const provider = model.slice(0, slash);
+    const modelId = model.slice(slash + 1);
+    chain.push({ provider, modelId, ...(thinking ? { thinking } : {}), raw: model });
   }
 
   return { chain, warnings };

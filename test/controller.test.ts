@@ -15,6 +15,7 @@ type Harness = {
   setCalls: string[];
   continues: number;
   notifications: Array<{ message: string; type: string }>;
+  thinkings: string[];
   statuses: Array<string | undefined>;
   setCurrent(raw: string | undefined): void;
 };
@@ -23,10 +24,12 @@ function makeHarness(options: {
   store?: RouterStore;
   falseRaws?: string[];
   currentRaw?: string;
+  chain?: ChainEntry[];
 } = {}): Harness {
   const store = options.store ?? new RouterStore(":memory:");
+  const activeChain = options.chain ?? chain;
   const falseRaws = new Set(options.falseRaws ?? []);
-  const models = new Map<string, PiModel>(chain.map((entry) => [entry.raw, {} as PiModel]));
+  const models = new Map<string, PiModel>(activeChain.map((entry) => [entry.raw, {} as PiModel]));
   const modelRaws = new Map<PiModel, string>(
     [...models.entries()].map(([raw, model]) => [model, raw]),
   );
@@ -34,6 +37,7 @@ function makeHarness(options: {
   const setCalls: string[] = [];
   const notifications: Array<{ message: string; type: string }> = [];
   const statuses: Array<string | undefined> = [];
+  const thinkings: string[] = [];
   let continues = 0;
 
   const deps: ControllerDeps = {
@@ -56,6 +60,9 @@ function makeHarness(options: {
     notify: (message, type) => {
       notifications.push({ message, type });
     },
+    setThinking: (level) => {
+      thinkings.push(level);
+    },
     setStatus: (text) => {
       statuses.push(text);
     },
@@ -64,13 +71,14 @@ function makeHarness(options: {
   };
 
   return {
-    controller: new RouterController(chain, deps),
+    controller: new RouterController(activeChain, deps),
     store,
     setCalls,
     get continues() {
       return continues;
     },
     notifications,
+    thinkings,
     statuses,
     setCurrent: (raw) => { currentRaw = raw; },
   };
@@ -153,6 +161,45 @@ describe("RouterController", () => {
 
     expect(harness.setCalls).toEqual([]);
     expect(harness.store.recentEvents("2026-08-20T00:00:00.000Z")).toEqual([]);
+    harness.store.close();
+  });
+
+  it("applies a chain entry's thinking level after switching to it", async () => {
+    const withThinking: ChainEntry[] = [
+      { provider: "one", modelId: "a", raw: "one/a" },
+      { provider: "two", modelId: "b", thinking: "max", raw: "two/b" },
+    ];
+    const harness = makeHarness({ chain: withThinking });
+    await harness.controller.activate();
+    await harness.controller.advance("manual");
+
+    expect(harness.setCalls).toEqual(["two/b"]);
+    expect(harness.thinkings).toEqual(["max"]);
+    expect(harness.notifications.at(-1)?.message).toContain("switched to two/b (max)");
+    harness.store.close();
+  });
+
+  it("applies the pinned level when arming onto a chain entry without switching", async () => {
+    const withThinking: ChainEntry[] = [
+      { provider: "one", modelId: "a", thinking: "high", raw: "one/a" },
+      { provider: "two", modelId: "b", raw: "two/b" },
+    ];
+    const harness = makeHarness({ chain: withThinking });
+    await harness.controller.activate();
+
+    expect(harness.setCalls).toEqual([]);
+    expect(harness.thinkings).toEqual(["high"]);
+    expect(harness.notifications.at(-1)?.message).toBe("routing on, staying on one/a (high)");
+    harness.store.close();
+  });
+
+  it("leaves the session thinking level alone for an entry without one", async () => {
+    const harness = makeHarness();
+    await harness.controller.activate();
+    await harness.controller.advance("manual");
+
+    expect(harness.setCalls).toEqual(["two/b"]);
+    expect(harness.thinkings).toEqual([]);
     harness.store.close();
   });
 

@@ -80,6 +80,7 @@ export default function (pi: ExtensionAPI): void {
       },
       sendContinue: () => queueMicrotask(() => pi.sendUserMessage(RESUME_MESSAGE)),
       notify,
+      setThinking: (level) => pi.setThinkingLevel(level),
       setStatus,
       store,
       now: () => Date.now(),

@@ -1,9 +1,9 @@
 {
   "chain": [
-    "vercel-ai-gateway/poolside/laguna-s-2.1-free",
-    "openrouter/poolside/laguna-s-2.1:free",
-    "opencode/hy3-free",
-    "vercel-ai-gateway/tencent/hy3",
-    "vercel-ai-gateway/inclusionai/ling-3.0-flash"
+    "vercel-ai-gateway/poolside/laguna-s-2.1-free::high",
+    "openrouter/poolside/laguna-s-2.1:free::high",
+    "opencode/hy3-free::high",
+    "vercel-ai-gateway/tencent/hy3::high",
+    "vercel-ai-gateway/inclusionai/ling-3.0-flash::high"
   ]
 }

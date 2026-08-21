@@ -55,6 +55,23 @@ Each entry splits at its **first** `/`, so model ids may contain more slashes. C
 id with `pi --list-models` before adding it; unknown entries are reported at startup and
 skipped when routing.
 
+An entry may pin a thinking level by appending `::<level>`. The level is applied right
+after switching to that model; entries without one leave the session level untouched:
+
+```json
+{
+  "chain": [
+    "openrouter/poolside/laguna-s-2.1:free",
+    "openai-codex/gpt-5.6-luna::max"
+  ]
+}
+```
+
+Levels are `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, and `max`, clamped to what
+the model supports; an unrecognised one is reported at startup and the model still runs.
+The separator is doubled because a single colon already belongs to model ids such as
+`laguna-s-2.1:free`, which is why `…:free::high` reads correctly.
+
 A hard limit (quota exhausted, billing, payment required) cools that model until the next
 UTC midnight. Ordinary errors and per-minute throttles advance to the next model without a
 cooldown, so a short-lived `429` never costs you a model for the rest of the day.
@@ -71,11 +88,15 @@ cooldowns at startup and backs `/model-router status`.
 | `/model-router off` | Disarm routing |
 | `/model-router next` | Manually advance to the next eligible entry |
 | `/model-router status` | Show chain order, current/cooling markers, and today's limit counts |
+| `/model-router config` | Show the configured chain with pinned thinking levels |
 
 Launchers can arm routing at session start with `pi --model-router`, equivalent to
 `/model-router on`. Put the flag last on the command line (or write `--model-router=true`):
 pi parses unregistered flags before it knows their type, so a prompt written right after
 the flag is swallowed as its value.
+
+Every listing ends with the paths to the config file and the history database, so you can
+open them without looking anything up.
 
 While armed, the footer shows `router:<model>` when the session is on a chain model and
 `router:armed` otherwise, with a `(n cooling)` suffix when cooldowns are active. Arming

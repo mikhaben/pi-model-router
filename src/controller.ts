@@ -14,6 +14,8 @@ export interface ControllerDeps {
   currentModel(): { provider: string; id: string } | undefined;
   sendContinue(): void;
   notify(message: string, type: NotifyType): void;
+  /** Applied after a switch when the chain entry names a level. */
+  setThinking(level: NonNullable<ChainEntry["thinking"]>): void;
   /** Footer status text; undefined clears the entry. */
   setStatus(text: string | undefined): void;
   store: RouterStore | undefined;
@@ -92,7 +94,11 @@ export class RouterController {
     this.activeFlag = true;
     const currentRaw = this.currentRaw();
     if (currentRaw && this.isEligible(currentRaw)) {
-      this.deps.notify(`routing on, staying on ${currentRaw}`, "info");
+      // Arming onto a chain entry honours its pinned level, same as switching to it.
+      const entry = this.chain.find((candidate) => candidate.raw === currentRaw);
+      if (entry?.thinking) this.deps.setThinking(entry.thinking);
+      const suffix = entry?.thinking ? ` (${entry.thinking})` : "";
+      this.deps.notify(`routing on, staying on ${currentRaw}${suffix}`, "info");
       this.refreshStatus();
       return true;
     }
@@ -162,6 +168,8 @@ export class RouterController {
         continue;
       }
 
+      if (candidate.thinking) this.deps.setThinking(candidate.thinking);
+
       this.deps.store?.record({
         at: new Date(this.deps.now()).toISOString(),
         provider: candidate.provider,
@@ -169,14 +177,25 @@ export class RouterController {
         kind: "switch",
       });
       const left = this.chain.filter((entry) => !this.attempted.has(entry.raw)).length;
+      const target = candidate.thinking ? `${candidate.raw} (${candidate.thinking})` : candidate.raw;
       this.deps.notify(
-        `${failedRaw ?? "no current model"} ${reason}; switched to ${candidate.raw} (${left} chain models left)`,
+        `${failedRaw ?? "no current model"} ${reason}; switched to ${target} (${left} chain models left)`,
         "info",
       );
       if (reason !== "manual") this.deps.sendContinue();
       this.refreshStatus();
       return true;
     }
+  }
+
+  /** The chain as configured, in order, with any pinned thinking level. */
+  configText(): string {
+    if (this.chain.length === 0) return "chain is empty";
+    const lines = this.chain.map((entry, i) => {
+      const level = entry.thinking ? `  [thinking: ${entry.thinking}]` : "";
+      return `${i + 1}. ${entry.raw}${level}`;
+    });
+    return [`${this.chain.length} models in the chain, best first:`, ...lines].join("\n");
   }
 
   statusText(): string {

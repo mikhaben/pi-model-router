@@ -1,19 +1,31 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import type { AutocompleteItem } from "@earendil-works/pi-tui";
+import { join } from "node:path";
 import { configPath } from "./config.js";
+import { DB_FILENAME } from "./store.js";
 import { RouterController } from "./controller.js";
 import { getAgentDir } from "@earendil-works/pi-coding-agent";
 
-const VERBS = ["on", "off", "status", "next"] as const;
+const VERBS = ["on", "off", "status", "next", "config"] as const;
 const EXAMPLE_BODY = "{\"chain\":[\"provider/model-id\",\"provider/fallback-model-id\"]} (see pi-model-router.example.json)";
 const HELP = [
   "/model-router on — arm routing and switch onto the chain",
   "/model-router off — disarm routing",
   "/model-router status — chain order, cooldowns, today's limit counts",
   "/model-router next — advance to the next eligible model",
+  "/model-router config — the configured chain and where the files live",
 ].join("\n");
 
 type NotifyType = "info" | "warning" | "error";
+
+/** Printed under every listing so the files are one click away, not a README lookup. */
+function paths(): string {
+  const agentDir = getAgentDir();
+  return [
+    `config:  ${configPath(agentDir)}`,
+    `history: ${join(agentDir, DB_FILENAME)}`,
+  ].join("\n");
+}
 
 export function registerModelRouterCommand(
   pi: ExtensionAPI,
@@ -21,7 +33,7 @@ export function registerModelRouterCommand(
   notify: (message: string, type: NotifyType) => void,
 ): void {
   pi.registerCommand("model-router", {
-    description: "Model-router fallback routing: on | off | status | next",
+    description: "Model-router fallback routing: on | off | status | next | config",
     getArgumentCompletions: (prefix): AutocompleteItem[] | null => {
       const hits = VERBS
         .filter((verb) => verb.startsWith(prefix))
@@ -40,7 +52,7 @@ export function registerModelRouterCommand(
       }
 
       if (verb === "") {
-        notify(`${instance.active ? "armed" : "off"}\n${HELP}`, "info");
+        notify(`${instance.active ? "armed" : "off"}\n${HELP}\n\n${paths()}`, "info");
         return;
       }
       if (verb === "off") {
@@ -60,11 +72,15 @@ export function registerModelRouterCommand(
         return;
       }
       if (verb === "status") {
-        notify(instance.statusText(), "info");
+        notify(`${instance.statusText()}\n\n${paths()}`, "info");
+        return;
+      }
+      if (verb === "config") {
+        notify(`${instance.configText()}\n\n${paths()}`, "info");
         return;
       }
 
-      notify("Usage: /model-router [on|off|status|next]", "error");
+      notify("Usage: /model-router [on|off|status|next|config]", "error");
     },
   });
 }
