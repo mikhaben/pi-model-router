@@ -1,6 +1,6 @@
 {
   "name": "@mikhaben/pi-model-router",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "description": "Ordered model fallback for pi: a chain you define, advanced automatically when a model hits a provider limit or error, with SQLite failure history and a /model-router command.",
   "author": "mikhaben",
