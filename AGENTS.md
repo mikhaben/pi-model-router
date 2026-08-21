@@ -15,6 +15,34 @@ but routes only while armed, and only failures of chain-member models are ever r
 Use npm only. Runtime code has zero npm dependencies and requires Node 24 or newer for
 `node:sqlite`.
 
+## Releasing
+
+The package is `@mikhaben/pi-model-router` on npm; the maintainer cuts releases, and
+pull requests never touch the version, tags, or release notes.
+
+```sh
+git add <files> && git commit -m "fix: ..."   # changes first
+npm version patch                             # bumps package.json, commits, tags vX.Y.Z
+git push && git push --tags
+npm publish --otp=<6-digit code>              # 2FA is required on every publish
+gh release create vX.Y.Z --title "vX.Y.Z" --notes "..."
+```
+
+- `npm version` is what keeps the tag and the manifest in sync; never hand-edit the
+  version field. It produces the `v`-prefixed tag the `protect-release-tags` ruleset
+  expects.
+- `prepublishOnly` runs typecheck, tests, and build before every publish. Never bypass
+  it — it is the only gate between a broken build and the registry.
+- Both repository rulesets (`protect-main`, `protect-release-tags`) block direct pushes
+  and tag writes for everyone except the admin bypass, so releases are maintainer-only
+  by construction.
+- Published versions are permanent in practice: npm allows unpublishing only within
+  72 hours. Fix a bad release by publishing the next patch, not by removing it.
+- After a publish the registry read path lags the write path by minutes. `npm view` can
+  return 404 while `npm access get status <pkg>` already reports the package. Trust
+  `npm access`, and wait rather than republishing.
+- The pi.dev package gallery re-reads npm on its own; publishing is the only step.
+
 ## Project layout
 
 ```text
